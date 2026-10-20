@@ -6,8 +6,6 @@ package com.mycompany.whatsaap;
 
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -18,17 +16,13 @@ import org.json.simple.JSONObject;
  * @author Student
  */
 public class Message {
-   
-
-
-
+    
     private String messageId;
     private int messageNumber;
     private String recipient;
     private String content;
     private String messageHash;
 
-    private static final List<Message> allSentMessages = new ArrayList<>();
     private static int totalMessagesSent = 0;
 
     public Message(String recipient, String content) {
@@ -64,12 +58,14 @@ public class Message {
     public String sendMessage(String choice) {
         switch (choice.trim().toLowerCase()) {
             case "send":
-                allSentMessages.add(this);
+                MessageStore.addSentMessage(this);
                 return "Message successfully sent.";
             case "discard":
+                MessageStore.addDisregardedMessage(this);
                 return "Press 0 to delete the message.";
             case "store":
                 storeMessage();
+                MessageStore.addStoredMessage(this);
                 return "Message successfully stored.";
             default:
                 return "Invalid choice.";
@@ -77,16 +73,7 @@ public class Message {
     }
 
     public static String printMessages() {
-        if (allSentMessages.isEmpty()) return "No messages sent yet.";
-        StringBuilder sb = new StringBuilder();
-        for (Message m : allSentMessages) {
-            sb.append("Message ID: ").append(m.messageId).append("\n");
-            sb.append("Message Hash: ").append(m.messageHash).append("\n");
-            sb.append("Recipient: ").append(m.recipient).append("\n");
-            sb.append("Message: ").append(m.content).append("\n");
-            sb.append("------------------------\n");
-        }
-        return sb.toString();
+        return MessageStore.displayFullReport();
     }
 
     public static int returnTotalMessages() {
@@ -136,4 +123,5 @@ public class Message {
     public String getContent() { return content; }
     public String getMessageHash() { return messageHash; }
 }
+
 
