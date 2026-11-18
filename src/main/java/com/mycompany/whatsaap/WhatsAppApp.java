@@ -13,7 +13,6 @@ import java.util.Scanner;
 
 public class WhatsAppApp {
     private static User registeredUser;
-    private static boolean isLoggedIn = false;
     private static final Scanner scanner = new Scanner(System.in);
 
     public static boolean checkUserName(String username) {
@@ -39,8 +38,9 @@ public class WhatsAppApp {
         if (!checkPasswordComplexity(password)) {
             return "Password is not correctly formatted; please ensure that the password contains at least eight characters, a capital letter, a number, and a special character.";
         }
-        String cellResult = Message.checkRecipientCell(cell);
-        if (!cellResult.contains("successfully")) return cellResult;
+        if (!Message.checkRecipientCell(cell)) {
+            return Message.getRecipientCellFeedback(cell);
+        }
         registeredUser = new User(username, password, cell, firstName, lastName);
         return "Username successfully captured.\nPassword successfully captured.\nCell phone number successfully added.";
     }
@@ -53,42 +53,14 @@ public class WhatsAppApp {
 
     public static String returnLoginStatus(boolean success) {
         if (success) {
-            isLoggedIn = true;
-            return "Welcome " + registeredUser.getFirstName() + " " +
-                   registeredUser.getLastName() + ", it is great to see you again.";
+            return "Welcome to QuickChat.";
         }
-        isLoggedIn = false;
         return "Username or password incorrect, please try again.";
     }
 
-    private static void sendNewMessage() {
-        if (!isLoggedIn) {
-            System.out.println("You must log in first!");
-            return;
-        }
-        System.out.print("Recipient cell number (+27...): ");
-        String recipient = scanner.nextLine().trim();
-        String cellCheck = Message.checkRecipientCell(recipient);
-        System.out.println(cellCheck);
-        if (!cellCheck.contains("successfully")) return;
-
-        System.out.print("Enter your message (max 250 characters): ");
-        String messageText = scanner.nextLine().trim();
-        String lengthCheck = Message.checkMessageLength(messageText);
-        System.out.println(lengthCheck);
-        if (!lengthCheck.contains("ready")) return;
-
-        Message newMessage = new Message(recipient, messageText);
-        System.out.println("Message ID generated: " + newMessage.getMessageId());
-        System.out.println("Message Hash: " + newMessage.getMessageHash());
-
-        System.out.print("[Send/Discard/Store]: ");
-        String action = scanner.nextLine().trim();
-        System.out.println(newMessage.sendMessage(action));
-    }
-
+    // ✅ THIS IS THE MAIN METHOD — Java needs this to run your program
     public static void main(String[] args) {
-        System.out.println("===== WhatsApp — Complete System =====\n");
+        System.out.println("===== QuickChat Messaging System =====\n");
 
         System.out.println("--- Create Account ---");
         System.out.print("Username: ");
@@ -121,51 +93,109 @@ public class WhatsAppApp {
         while (true) {
             System.out.println("\n===== MAIN MENU =====");
             System.out.println("1) Send Messages");
-            System.out.println("2) Show sent messages");
-            System.out.println("3) Total messages sent");
-            System.out.println("4) ----- PART 3: STORED MESSAGES -----");
-            System.out.println("5) Display all stored messages");
-            System.out.println("6) Display longest stored message");
-            System.out.println("7) Search message by ID");
-            System.out.println("8) Search messages by recipient");
-            System.out.println("9) Delete message by Hash");
-            System.out.println("10) Load from JSON into array");
-            System.out.println("11) Display FULL Report");
-            System.out.println("12) Exit");
-            System.out.print("Choose option: ");
+            System.out.println("2) Show recently sent messages");
+            System.out.println("3) Quit");
+            System.out.print("Enter your choice: ");
 
             String choice = scanner.nextLine().trim();
             switch (choice) {
-                case "1": sendNewMessage(); break;
-                case "2": System.out.println(Message.printMessages()); break;
-                case "3": System.out.println("Total sent: " + Message.returnTotalMessages()); break;
-                case "5": System.out.println(MessageStore.displayAllStored()); break;
-                case "6": System.out.println(MessageStore.displayLongestMessage()); break;
-                case "7":
-                    System.out.print("Enter Message ID to search: ");
-                    String id = scanner.nextLine().trim();
-                    System.out.println(MessageStore.searchByMessageId(id));
+                case "1":
+                    int numMessages = 0;
+                    while (true) {
+                        System.out.print("How many messages do you want to send? ");
+                        try {
+                            numMessages = Integer.parseInt(scanner.nextLine().trim());
+                            if (numMessages > 0) break;
+                            System.out.println("Please enter a positive number.");
+                        } catch (NumberFormatException e) {
+                            System.out.println("Invalid input — please enter a number.");
+                        }
+                    }
+
+                    for (int i = 1; i <= numMessages; i++) {
+                        System.out.println("\n--- Message " + i + " of " + numMessages + " ---");
+
+                        String recipient;
+                        while (true) {
+                            System.out.print("Recipient cell number (+27...): ");
+                            recipient = scanner.nextLine().trim();
+                            if (Message.checkRecipientCell(recipient)) break;
+                            System.out.println(Message.getRecipientCellFeedback(recipient));
+                        }
+
+                        String content;
+                        while (true) {
+                            System.out.print("Message (max 250 chars): ");
+                            content = scanner.nextLine().trim();
+                            String check = Message.checkMessageLength(content);
+                            System.out.println(check);
+                            if (check.contains("ready")) break;
+                        }
+
+                        Message msg = new Message(recipient, content);
+                        System.out.print("[Send/Discard/Store]: ");
+                        String action = scanner.nextLine().trim();
+                        String result = msg.sendMessage(action);
+                        System.out.println(result);
+
+                        System.out.println("\n--- Message Details ---");
+                        System.out.println("Message ID: " + msg.getMessageId());
+                        System.out.println("Message Hash: " + msg.getMessageHash());
+                        System.out.println("Recipient: " + msg.getRecipient());
+                        System.out.println("Message: " + msg.getContent());
+                    }
+                    System.out.println("\nTotal messages created: " + Message.getTotalMessagesCreated());
                     break;
-                case "8":
-                    System.out.print("Enter recipient number: ");
-                    String num = scanner.nextLine().trim();
-                    System.out.println(MessageStore.searchByRecipient(num));
+
+                case "2":
+                    System.out.println("\n===== PART 3 OPTIONS =====");
+                    System.out.println("a) Display all stored messages");
+                    System.out.println("b) Display longest message");
+                    System.out.println("c) Search message by ID");
+                    System.out.println("d) Search messages by recipient");
+                    System.out.println("e) Delete message by Hash");
+                    System.out.println("f) Load messages from JSON");
+                    System.out.println("g) Display full report");
+                    System.out.println("h) Back to main menu");
+                    System.out.print("Choose option: ");
+                    
+                    String subChoice = scanner.nextLine().trim().toLowerCase();
+                    switch(subChoice) {
+                        case "a": System.out.println(MessageStore.displayAllStored()); break;
+                        case "b": System.out.println(MessageStore.displayLongestMessage()); break;
+                        case "c":
+                            System.out.print("Enter Message ID: ");
+                            String id = scanner.nextLine().trim();
+                            System.out.println(MessageStore.searchByMessageId(id));
+                            break;
+                        case "d":
+                            System.out.print("Enter recipient number (+27...): ");
+                            String num = scanner.nextLine().trim();
+                            System.out.println(MessageStore.searchByRecipient(num));
+                            break;
+                        case "e":
+                            System.out.print("Enter Message Hash to delete: ");
+                            String hash = scanner.nextLine().trim();
+                            System.out.println(MessageStore.deleteByHash(hash));
+                            break;
+                        case "f": System.out.println(MessageStore.loadFromJSON()); break;
+                        case "g": System.out.println(MessageStore.displayFullReport()); break;
+                        case "h": break;
+                        default: System.out.println("Invalid option.");
+                    }
                     break;
-                case "9":
-                    System.out.print("Enter Message Hash to delete: ");
-                    String hash = scanner.nextLine().trim();
-                    System.out.println(MessageStore.deleteByHash(hash));
-                    break;
-                case "10": System.out.println(MessageStore.loadFromJSON()); break;
-                case "11": System.out.println(MessageStore.displayFullReport()); break;
-                case "12":
-                    System.out.println("Exiting... Goodbye!");
+
+                case "3":
+                    System.out.println("Goodbye!");
                     return;
-                default: System.out.println("Invalid option. Try again.");
+
+                default:
+                    System.out.println("Invalid choice — please try again.");
             }
         }
     }
 }
+
             
         
     

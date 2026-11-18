@@ -8,9 +8,9 @@ package com.mycompany.whatsaap;
  *
  * @author Student
  */
-public class User {
-   
 
+
+public class User {
     private String username;
     private String password;
     private String cellNumber;

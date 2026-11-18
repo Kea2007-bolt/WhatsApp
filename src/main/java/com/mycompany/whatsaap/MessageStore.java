@@ -10,13 +10,15 @@ import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
+
+
 /**
  *
  * @author Student
  */
+
+
 public class MessageStore {
-    
-    // ========== ALL ARRAYS — NO ArrayList ==========
     private static final Message[] sentMessages = new Message[100];
     private static final Message[] disregardedMessages = new Message[100];
     private static final Message[] storedMessages = new Message[100];
@@ -72,68 +74,77 @@ public class MessageStore {
                 longestIndex = i;
             }
         }
-        return "Longest message: \"" + storedMessages[longestIndex].getContent() + "\"\n" +
-               "Recipient: " + storedMessages[longestIndex].getRecipient() + "\n";
+        return "Longest Message:\nRecipient: " + storedMessages[longestIndex].getRecipient() + "\n"
+             + "Message: \"" + storedMessages[longestIndex].getContent() + "\"\n"
+             + "Length: " + maxLength + " characters\n";
     }
 
     public static String searchByMessageId(String id) {
         for (int i = 0; i < storedCount; i++) {
-            if (storedMessages[i].getMessageId().equals(id)) {
-                return "Found:\nRecipient: " + storedMessages[i].getRecipient() + "\n" +
-                       "Message: " + storedMessages[i].getContent() + "\n";
+            if (messageIDs[i] != null && messageIDs[i].equals(id)) {
+                return "Message Found:\nID: " + storedMessages[i].getMessageId() + "\n"
+                     + "Recipient: " + storedMessages[i].getRecipient() + "\n"
+                     + "Message: " + storedMessages[i].getContent() + "\n";
             }
         }
         return "Message ID " + id + " not found.\n";
     }
 
     public static String searchByRecipient(String recipientNum) {
-        StringBuilder sb = new StringBuilder("Messages to " + recipientNum + ":\n");
-        boolean found = false;
+        StringBuilder sb = new StringBuilder();
+        int matchCount = 0;
+        sb.append("=== Messages to: ").append(recipientNum).append(" ===\n");
         for (int i = 0; i < storedCount; i++) {
             if (storedMessages[i].getRecipient().equals(recipientNum)) {
-                sb.append("- ").append(storedMessages[i].getContent()).append("\n");
-                found = true;
+                sb.append("ID: ").append(storedMessages[i].getMessageId())
+                  .append(" | Message: ").append(storedMessages[i].getContent()).append("\n");
+                matchCount++;
             }
         }
-        if (!found) return "No messages found for recipient " + recipientNum + ".\n";
+        if (matchCount == 0) return "No messages found for recipient " + recipientNum + ".\n";
+        sb.append("Total messages found: ").append(matchCount).append("\n");
         return sb.toString();
     }
 
     public static String deleteByHash(String hash) {
         for (int i = 0; i < storedCount; i++) {
-            if (storedMessages[i].getMessageHash().equals(hash)) {
-                String deletedContent = storedMessages[i].getContent();
+            if (messageHashes[i] != null && messageHashes[i].equals(hash)) {
+                String deletedMsg = storedMessages[i].getContent();
+                String deletedRecipient = storedMessages[i].getRecipient();
                 for (int j = i; j < storedCount - 1; j++) {
                     storedMessages[j] = storedMessages[j + 1];
                     messageHashes[j] = messageHashes[j + 1];
                     messageIDs[j] = messageIDs[j + 1];
                 }
-                storedMessages[storedCount - 1] = null;
-                messageHashes[storedCount - 1] = null;
-                messageIDs[storedCount - 1] = null;
+                int last = storedCount - 1;
+                storedMessages[last] = null;
+                messageHashes[last] = null;
+                messageIDs[last] = null;
                 storedCount--;
-                return "Message: \"" + deletedContent + "\" successfully deleted.\n";
+                return "Message Successfully Deleted:\nRecipient: " + deletedRecipient + "\n"
+                     + "Message: \"" + deletedMsg + "\"\n";
             }
         }
-        return "Message hash " + hash + " not found.\n";
+        return "Message hash " + hash + " not found — nothing deleted.\n";
     }
 
     public static String displayFullReport() {
         StringBuilder sb = new StringBuilder();
         sb.append("==================== FULL MESSAGE REPORT ====================\n");
-        sb.append("Total Sent: ").append(sentCount).append("\n");
-        sb.append("Total Disregarded: ").append(disregardedCount).append("\n");
-        sb.append("Total Stored: ").append(storedCount).append("\n\n");
-
-        sb.append("--- All Sent Messages ---\n");
+        sb.append("Total Messages Created: ").append(Message.getTotalMessagesCreated()).append("\n");
+        sb.append("Sent Messages: ").append(sentCount).append("\n");
+        sb.append("Disregarded Messages: ").append(disregardedCount).append("\n");
+        sb.append("Stored Messages: ").append(storedCount).append("\n\n");
+        sb.append("--- Sent Messages ---\n");
+        if (sentCount == 0) sb.append("None.\n");
         for (int i = 0; i < sentCount; i++) {
             sb.append("ID: ").append(sentMessages[i].getMessageId())
               .append(" | Hash: ").append(sentMessages[i].getMessageHash())
               .append(" | Recipient: ").append(sentMessages[i].getRecipient())
               .append(" | Message: ").append(sentMessages[i].getContent()).append("\n");
         }
-
-        sb.append("\n--- All Stored Messages ---\n");
+        sb.append("\n--- Stored Messages ---\n");
+        if (storedCount == 0) sb.append("None.\n");
         for (int i = 0; i < storedCount; i++) {
             sb.append("ID: ").append(storedMessages[i].getMessageId())
               .append(" | Hash: ").append(storedMessages[i].getMessageHash())
@@ -146,6 +157,7 @@ public class MessageStore {
 
     public static String loadFromJSON() {
         JSONParser parser = new JSONParser();
+        int loaded = 0;
         try (FileReader reader = new FileReader("messages.json")) {
             Object obj = parser.parse(reader);
             JSONArray array = (JSONArray) obj;
@@ -155,25 +167,18 @@ public class MessageStore {
                 String recipient = (String) jsonMsg.get("recipient");
                 String content = (String) jsonMsg.get("content");
                 storedMessages[i] = new Message(recipient, content);
+                messageHashes[i] = storedMessages[i].getMessageHash();
+                messageIDs[i] = storedMessages[i].getMessageId();
                 storedCount++;
+                loaded++;
             }
-            return "JSON file loaded successfully into array.\n";
         } catch (IOException | ParseException e) {
-            return "Error loading JSON: " + e.getMessage() + "\n";
+            return "No existing file or error reading: " + e.getMessage() + "\n";
         }
+        return loaded + " messages loaded from JSON file.\n";
     }
 
-    public static Message[] getSentMessages() {
-        Message[] result = new Message[sentCount];
-        for (int i = 0; i < sentCount; i++) {
-            result[i] = sentMessages[i];
-        }
-        return result;
-    }
-
-    public static int getSentCount() { return sentCount; }
     public static int getStoredCount() { return storedCount; }
-
     public static void resetArrays() {
         sentCount = 0;
         disregardedCount = 0;
